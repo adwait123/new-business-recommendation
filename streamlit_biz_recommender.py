@@ -34,11 +34,9 @@ if 'results_data' not in st.session_state:
 if 'temp_dir' not in st.session_state:
     st.session_state.temp_dir = None
 
-
 def log_debug(message):
     """Helper function for debug logging"""
     st.write(f"DEBUG: {message}")
-
 
 def graham_scan(points):
     """Graham scan algorithm to find convex hull of points."""
@@ -74,7 +72,6 @@ def graham_scan(points):
         hull.append(p)
 
     return hull
-
 
 def improved_clustering(uncovered_zips_with_coords, zip_coordinates, min_cluster_size=3, iteration=1):
     """Much more aggressive clustering that creates smaller, more efficient service areas."""
@@ -207,36 +204,35 @@ def improved_clustering(uncovered_zips_with_coords, zip_coordinates, min_cluster
 
     return final_clusters, noise_zips, best_method
 
-
 def create_coverage_analysis(zip_db_df, uncovered_df, covered_df=None):
     """Main function to create coverage analysis with progress tracking"""
-
+    
     # Create progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
-
+    
     status_text.text("Loading data...")
     progress_bar.progress(10)
-
+    
     # Process data
     zip_coordinates = {int(row['zip']): (row['lat'], row['lng']) for _, row in zip_db_df.iterrows()}
-
+    
     covered_zips = set()
     used_business_zips = set()
     if covered_df is not None:
         covered_zips = set(covered_df['zip_code'].unique())
         used_business_zips = set(covered_df['biz_zip'].unique())
-
+    
     uncovered_zips = list(uncovered_df['zip_code'].unique())
     uncovered_zips_with_coords = [z for z in uncovered_zips if z in zip_coordinates]
-
+    
     status_text.text(f"Processing {len(uncovered_zips_with_coords)} uncovered ZIPs...")
     progress_bar.progress(20)
-
+    
     if len(uncovered_zips_with_coords) == 0:
         st.success("No uncovered ZIPs to process!")
         return None
-
+    
     # Initialize helper functions
     distance_cache = {}
 
@@ -407,7 +403,7 @@ def create_coverage_analysis(zip_db_df, uncovered_df, covered_df=None):
     # Start iterative coverage process
     status_text.text("Starting iterative coverage analysis...")
     progress_bar.progress(30)
-
+    
     all_new_locations = []
     total_newly_covered = set()
     current_uncovered = set(uncovered_zips_with_coords)
@@ -417,7 +413,7 @@ def create_coverage_analysis(zip_db_df, uncovered_df, covered_df=None):
     while len(current_uncovered) > 0 and iteration < max_iterations:
         iteration += 1
         st.write(f"\n   🔄 ITERATION {iteration}: Processing {len(current_uncovered)} uncovered ZIPs...")
-
+        
         progress_value = 30 + (iteration * 12)
         progress_bar.progress(progress_value)
         status_text.text(f"Iteration {iteration}: Clustering and analyzing...")
@@ -511,8 +507,7 @@ def create_coverage_analysis(zip_db_df, uncovered_df, covered_df=None):
                 iteration_covered.update(best_contained)
                 used_business_zips.add(best_business_zip)
 
-                st.write(
-                    f"         ✅ Business ZIP {best_business_zip}: {len(best_contained)}/{len(target_zips)} ZIPs ({coverage_pct}%)")
+                st.write(f"         ✅ Business ZIP {best_business_zip}: {len(best_contained)}/{len(target_zips)} ZIPs ({coverage_pct}%)")
 
         # Update for next iteration
         all_new_locations.extend(iteration_new_locations)
@@ -551,29 +546,28 @@ def create_coverage_analysis(zip_db_df, uncovered_df, covered_df=None):
 
     progress_bar.progress(100)
     status_text.text("Analysis complete!")
-
+    
     return results
-
 
 def create_folium_map(results):
     """Create enhanced Folium map for visualization"""
     if not results:
         return None
-
+    
     all_new_locations = results['all_new_locations']
     total_newly_covered = results['total_newly_covered']
     current_uncovered = results['current_uncovered']
     coverage_rate = results['coverage_rate']
     zip_coordinates = results['zip_coordinates']
-
+    
     # Calculate map center
     all_coords = list(zip_coordinates.values())
     mean_lat = sum([c[0] for c in all_coords]) / len(all_coords)
     mean_lng = sum([c[1] for c in all_coords]) / len(all_coords)
-
+    
     # Create map
     m = folium.Map(location=[mean_lat, mean_lng], zoom_start=4, tiles='cartodbpositron')
-
+    
     # Calculate stats for reference (but don't display overlay)
     total_new_covered = len(total_newly_covered)
     total_new_locations = len(all_new_locations)
@@ -661,18 +655,17 @@ def create_folium_map(results):
 
     return m
 
-
 def create_downloadable_files(results):
     """Create all downloadable files"""
     if not results:
         return None
-
+    
     all_new_locations = results['all_new_locations']
     total_newly_covered = results['total_newly_covered']
     current_uncovered = results['current_uncovered']
-
+    
     files = {}
-
+    
     # 1. New business locations CSV
     results_df = pd.DataFrame([
         {
@@ -691,7 +684,7 @@ def create_downloadable_files(results):
         for r in all_new_locations
     ])
     files['new_business_locations.csv'] = results_df.to_csv(index=False)
-
+    
     # 2. Newly covered ZIPs CSV
     all_newly_covered_records = []
     for location in all_new_locations:
@@ -703,11 +696,11 @@ def create_downloadable_files(results):
                 'polygon_boundary': location['boundary_zips'],
                 'iteration': location['iteration']
             })
-
+    
     if all_newly_covered_records:
         newly_covered_df = pd.DataFrame(all_newly_covered_records)
         files['newly_covered_zips.csv'] = newly_covered_df.to_csv(index=False)
-
+    
     # 3. JSON format
     json_results = [
         {
@@ -720,7 +713,7 @@ def create_downloadable_files(results):
         for r in all_new_locations
     ]
     files['new_business_locations.json'] = json.dumps(json_results, indent=2)
-
+    
     # 4. Still uncovered ZIPs
     if current_uncovered:
         still_uncovered_df = pd.DataFrame([
@@ -728,133 +721,128 @@ def create_downloadable_files(results):
             for zip_code in current_uncovered
         ])
         files['still_uncovered_zips.csv'] = still_uncovered_df.to_csv(index=False)
-
+    
     return files
-
 
 def create_zip_download(files, map_html=None):
     """Create a ZIP file containing all results"""
     zip_buffer = BytesIO()
-
+    
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         # Add all CSV and JSON files
         for filename, content in files.items():
             zip_file.writestr(filename, content)
-
+        
         # Add map HTML if provided
         if map_html:
             zip_file.writestr('coverage_map.html', map_html)
-
+    
     zip_buffer.seek(0)
     return zip_buffer
-
 
 def main():
     st.title("🎯 Business Coverage Analysis Tool")
     st.markdown("Upload your data files to analyze uncovered ZIP codes and generate optimal business locations.")
-
+    
     # Sidebar for file uploads
     with st.sidebar:
         st.header("📁 Upload Data Files")
-
+        
         # File upload 1: ZIP Code Database
         zip_db_file = st.file_uploader(
             "Upload ZIP Code Database (CSV)",
             type=['csv'],
             help="CSV file containing ZIP codes with latitude and longitude coordinates"
         )
-
+        
         # File upload 2: Uncovered ZIPs
         uncovered_file = st.file_uploader(
             "Upload Uncovered ZIPs (CSV)",
             type=['csv'],
             help="CSV file containing uncovered ZIP codes by business"
         )
-
+        
         # Optional: Covered ZIPs (for reference)
         covered_file = st.file_uploader(
             "Upload Covered ZIPs (CSV) - Optional",
             type=['csv'],
             help="Optional: CSV file containing already covered ZIP codes"
         )
-
+        
     # Main content area
     if zip_db_file is not None and uncovered_file is not None:
-
+        
         # Load data
         try:
             zip_db_df = pd.read_csv(zip_db_file)
             uncovered_df = pd.read_csv(uncovered_file)
             covered_df = pd.read_csv(covered_file) if covered_file is not None else None
-
+            
             st.success("✅ Data files loaded successfully!")
-
+            
             # Display data summaries
             col1, col2 = st.columns(2)
-
+            
             with col1:
                 st.metric("ZIP Coordinates", len(zip_db_df))
-
+            
             with col2:
                 st.metric("Uncovered ZIPs", len(uncovered_df['zip_code'].unique()))
-
-            with col3:
-                st.metric("ZIP Coordinates", len(zip_db_df))
-
+            
             # Run analysis button
             if st.button("🚀 Run Coverage Analysis", type="primary"):
                 with st.spinner("Running comprehensive coverage analysis..."):
                     results = create_coverage_analysis(zip_db_df, uncovered_df, covered_df)
-
+                    
                     if results:
                         st.session_state.results_data = results
                         st.session_state.analysis_complete = True
                         st.success("🎉 Analysis completed successfully!")
                         st.rerun()
-
+            
         except Exception as e:
             st.error(f"❌ Error loading data files: {str(e)}")
             st.info("Please check that your CSV files have the correct format and column names.")
-
+    
     else:
         st.info("👆 Please upload the required data files to begin analysis.")
-
+        
         # Show example data format
         with st.expander("📋 Expected Data Format"):
             st.markdown("**ZIP Code Database CSV should contain:**")
             st.code("zip,lat,lng\n12345,40.7128,-74.0060\n67890,34.0522,-118.2437")
-
+            
             st.markdown("**Uncovered ZIPs CSV should contain:**")
             st.code("zip_code\n12345\n67890\n54321")
-
+            
             st.markdown("**Covered ZIPs CSV should contain (optional):**")
             st.code("zip_code,biz_zip\n11111,22222\n33333,44444")
-
+    
     # Display results if analysis is complete
     if st.session_state.analysis_complete and st.session_state.results_data:
         st.markdown("---")
         st.header("📊 Analysis Results")
-
+        
         results = st.session_state.results_data
-
+        
         # Summary metrics
         col1, col2, col3, col4 = st.columns(4)
-
+        
         with col1:
             st.metric("New Locations", len(results['all_new_locations']))
-
+        
         with col2:
             st.metric("ZIPs Newly Covered", len(results['total_newly_covered']))
-
+        
         with col3:
             st.metric("ZIPs Still Uncovered", len(results['current_uncovered']))
-
+        
         with col4:
             st.metric("Coverage Rate", f"{results['coverage_rate']:.1f}%")
-
+        
         # Create and display map
         st.subheader("🗺️ Interactive Coverage Map")
-
+        
         folium_map = create_folium_map(results)
         if folium_map:
             # Display map using streamlit components instead of streamlit_folium
@@ -862,10 +850,10 @@ def main():
             components.html(map_html, height=600, scrolling=True)
         else:
             map_html = None
-
+        
         # Detailed results table
         st.subheader("📋 New Business Locations Details")
-
+        
         locations_df = pd.DataFrame([
             {
                 'Business ID': r['new_business_id'],
@@ -878,13 +866,13 @@ def main():
             }
             for r in results['all_new_locations']
         ])
-
+        
         st.dataframe(locations_df, use_container_width=True)
-
+        
         # Statistics by iteration
         if len(results['all_new_locations']) > 0:
             st.subheader("📈 Performance by Iteration")
-
+            
             iteration_stats = {}
             for location in results['all_new_locations']:
                 iter_num = location['iteration']
@@ -892,7 +880,7 @@ def main():
                     iteration_stats[iter_num] = {'locations': 0, 'zips_covered': 0}
                 iteration_stats[iter_num]['locations'] += 1
                 iteration_stats[iter_num]['zips_covered'] += len(location['contained_zips'])
-
+            
             iter_df = pd.DataFrame([
                 {
                     'Iteration': iter_num,
@@ -902,20 +890,20 @@ def main():
                 }
                 for iter_num, stats in iteration_stats.items()
             ])
-
+            
             st.dataframe(iter_df, use_container_width=True)
-
+        
         # Download section
         st.markdown("---")
         st.subheader("💾 Download Results")
-
+        
         # Create downloadable files
         files = create_downloadable_files(results)
-
+        
         if files:
             # Individual file downloads
             col1, col2 = st.columns(2)
-
+            
             with col1:
                 st.download_button(
                     label="📄 Download Business Locations CSV",
@@ -923,7 +911,7 @@ def main():
                     file_name='new_business_locations.csv',
                     mime='text/csv'
                 )
-
+                
                 if 'newly_covered_zips.csv' in files:
                     st.download_button(
                         label="📄 Download Newly Covered ZIPs CSV",
@@ -931,7 +919,7 @@ def main():
                         file_name='newly_covered_zips.csv',
                         mime='text/csv'
                     )
-
+            
             with col2:
                 st.download_button(
                     label="📄 Download JSON Results",
@@ -939,7 +927,7 @@ def main():
                     file_name='new_business_locations.json',
                     mime='application/json'
                 )
-
+                
                 if 'still_uncovered_zips.csv' in files:
                     st.download_button(
                         label="📄 Download Still Uncovered ZIPs",
@@ -947,10 +935,10 @@ def main():
                         file_name='still_uncovered_zips.csv',
                         mime='text/csv'
                     )
-
+            
             # ZIP download with all files
             st.markdown("**Download Everything:**")
-
+            
             zip_data = create_zip_download(files, map_html)
             st.download_button(
                 label="🗜️ Download All Results (ZIP)",
@@ -958,7 +946,7 @@ def main():
                 file_name='coverage_analysis_results.zip',
                 mime='application/zip'
             )
-
+            
             # Map HTML download
             if map_html:
                 st.download_button(
@@ -967,31 +955,30 @@ def main():
                     file_name='coverage_map.html',
                     mime='text/html'
                 )
-
+        
         # Success message and next steps
         st.markdown("---")
         st.success("🎉 Analysis Complete!")
-
+        
         success_threshold = 80
         if results['coverage_rate'] >= success_threshold:
             st.balloons()
             st.success(f"🎯 **Excellent Coverage!** Achieved {results['coverage_rate']:.1f}% coverage rate.")
         else:
             st.info(f"📈 **Good Progress!** Achieved {results['coverage_rate']:.1f}% coverage rate.")
-
+        
         if len(results['current_uncovered']) > 0:
             with st.expander("💡 Next Steps for Remaining ZIPs"):
                 st.markdown(f"""
                 **{len(results['current_uncovered'])} ZIPs still need coverage:**
-
+                
                 1. **Review the map** - Check if remaining ZIPs are in remote/isolated areas
                 2. **Manual placement** - Consider strategic manual placement for outliers  
                 3. **Adjust parameters** - Try different clustering parameters
                 4. **Re-run analysis** - Upload updated data and run again
-
+                
                 The remaining uncovered ZIPs are available in the download files.
                 """)
-
 
 if __name__ == "__main__":
     main()
